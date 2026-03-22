@@ -1,17 +1,19 @@
-const express = require('express')
-const { exec } = require('child_process')
+const { execFile } = require('child_process');
+const net = require('net');
 
-const router = express.Router()
+function isValidHost(host) {
+  if (net.isIP(host)) return true;
+  const hostnameRegex = /^[a-zA-Z0-9.-]{1,253}$/;
+  return hostnameRegex.test(host);
+}
 
-// GET /reports/ping?host=example.com
-router.get('/ping', (req, res) => {
-  const host = req.query.host || '127.0.0.1'
+const host = req.query.host || '127.0.0.1';
 
-  // Vulnerable: user input reaches a shell command
-  exec(`ping -c 1 ${host}`, (err, stdout, stderr) => {
-    if (err) return res.status(500).send(stderr || err.message)
-    res.type('text').send(stdout)
-  })
-})
+if (!isValidHost(host)) {
+  return res.status(400).send('Invalid host');
+}
 
-module.exports = router
+execFile('ping', ['-c', '1', host], { timeout: 5000 }, (err, stdout, stderr) => {
+  if (err) return res.status(500).send(stderr || err.message);
+  res.type('text').send(stdout);
+});
